@@ -40,7 +40,7 @@ object List { // `List` companion object. Contains functions for creating and wo
   def foldRight[A,B](as: List[A], z: B)(f: (A, B) => B): B = // Utility functions
     as match {
       case Nil => z
-      case Cons(x, xs) => f(x, foldRight(xs, z)(f))
+      case Cons(head, tail) => f(head, foldRight(tail, z)(f))
     }
 
   def sum2(ns: List[Int]) =
@@ -85,8 +85,52 @@ object List { // `List` companion object. Contains functions for creating and wo
     case Cons(head, tail) => foldLeft(tail, f(z, head))(f)
   }
 
+  def concat[A](l: List[List[A]]): List[A] = foldRight(l, Nil:List[A])(append)
+
   def map[A,B](l: List[A])(f: A => B): List[B] = l match {
     case Nil => Nil
     case Cons(head, tail) => Cons(f(head), map(tail)(f))
+  }
+
+  def filter[A](as: List[A])(f: A => Boolean): List[A] = as match {
+    case Nil => Nil
+    case Cons(head, tail) if f(head) => Cons(head, filter(tail)(f))
+    case Cons(head, tail) if !f(head) => filter(tail)(f)
+  }
+
+  def filterWithFoldRight[A](l: List[A])(f: A => Boolean): List[A] =
+    foldRight(l, Nil:List[A])((head, tail) => if (f(head)) Cons(head, tail) else tail)
+
+  def flatMap[A,B](as: List[A])(f: A => List[B]): List[B] = as match {
+    case Nil => Nil
+    case Cons(head, Nil) => f(head)
+    case Cons(head, tail) => append(f(head), flatMap(tail)(f))
+  }
+
+  def flatMapAnswer[A,B](as: List[A])(f: A => List[B]): List[B] = concat(map(as)(f))
+
+  def filterWithFlatMapAnswer[A](as: List[A])(f: A => Boolean): List[A] =
+    flatMap(as)(a => if (f(a)) List(a) else Nil)
+
+  def addPairwise(a: List[Int], b: List[Int]): List[Int] = (a, b) match {
+    case (Nil, Nil) => Nil
+    case ( Cons(h1, t1), Cons(h2, t2) ) => Cons(h1 + h2, addPairwise(t1, t2))
+  }
+
+  def zipWith[A,B,C](a: List[A], b: List[B])(f: (A,B) => C): List[C] = (a, b) match {
+    case (Nil, Nil) => Nil
+    case (Cons(h1, t1), Cons(h2, t2)) => Cons(f(h1, h2), zipWith(t1, t2)(f))
+  }
+
+  def startsWith[A](l: List[A], prefix: List[A]): Boolean = (l, prefix) match {
+    case (Nil, _) => false
+    case ( Cons(head1, tail1), Cons(head2, tail2) ) => head1 == head2 && startsWith(tail1, tail2)
+    case _ => false
+  }
+
+  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = sup match {
+    case Nil => sub == Nil
+    case _ if startsWith(sup, sub) => true
+    case Cons(_,t) => hasSubsequence(t, sub)
   }
 }
