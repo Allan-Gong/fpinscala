@@ -147,7 +147,7 @@ object PolymorphicFunctions {
   def isSorted[A](as: Array[A], gt: (A,A) => Boolean): Boolean = {
     as.sliding(2,1)
       .map { case Array(a, b) => (a, b) }
-      .forall(tuple => gt(tuple))
+      .forall(tuple => gt(tuple._1, tuple._2))
   }
 
   def isSortedAnswer[A](as: Array[A], gt: (A,A) => Boolean): Boolean = {

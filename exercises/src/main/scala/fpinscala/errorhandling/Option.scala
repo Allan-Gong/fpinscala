@@ -4,29 +4,29 @@ package fpinscala.errorhandling
 import scala.{Either => _, Option => _, Some => _} // hide std library `Option`, `Some` and `Either`, since we are writing our own in this chapter
 
 sealed trait Option[+A] {
-  def map[B](f: A => B): Option[B] = {
+  def map[B](f: A => B): Option[B] = this match {
     case None => None
     case Some(a) => Some(f(a))
   }
 
-  def getOrElse[B>:A](default: => B): B = {
+  def getOrElse[B>:A](default: => B): B = this match {
     case None => default
-    case Some(b:B) => b
+    case Some(b) => b
   }
 
-  def flatMap[B](f: A => Option[B]): Option[B] = {
+  def flatMap[B](f: A => Option[B]): Option[B] = this match {
     case None => None
-    case Some(a:A) => f(a)
+    case Some(a) => f(a)
   }
 
   def flatMapWithMap[B](f: A => Option[B]): Option[B] = map(f) getOrElse None
 
-  def orElse[B>:A](ob: => Option[B]): Option[B] = {
+  def orElse[B>:A](ob: => Option[B]): Option[B] = this match {
     case None => ob
-    case Some(b:B) => Some(b)
+    case Some(b) => Some(b)
   }
 
-  def filter(f: A => Boolean): Option[A] = {
+  def filter(f: A => Boolean): Option[A] = this match {
     case Some(a) if f(a) => Some(a)
     case _ => None
   }
@@ -56,16 +56,6 @@ object Option {
     if (xs.isEmpty) None
     else Some(xs.sum / xs.length)
 
-  def variance(xs: Seq[Double]): Option[Double] = {
-    val mean = mean(xs)
-
-    val variance = xs.foldLeft(0.0)((acc, current) => {
-      acc + math.pow(current - mean, 2)
-    }) / xs.size
-
-    Some(variance)
-  }
-
   def varianceWithFlatMap(xs: Seq[Double]): Option[Double] = {
     mean(xs) flatMap (m =>
       mean(xs.map(x => math.pow(x - m, 2)))
@@ -73,7 +63,7 @@ object Option {
   }
 
   def map2[A,B,C](optionA: Option[A], optionB: Option[B])(f: (A, B) => C): Option[C] = (optionA, optionB ) match {
-    case (None, _) || (_, None) => None
+    case _ @(None, _) | (_, None) => None
     case (Some(a), Some(b)) => Some(f(a, b))
   }
 
