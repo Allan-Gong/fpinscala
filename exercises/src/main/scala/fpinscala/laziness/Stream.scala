@@ -108,6 +108,7 @@ trait Stream[+A] {
     case (Empty, Cons(head2, tail2)) => cons((None, Some(head2())), zipAll(tail2()))
     case (Cons(head1, tail1), Empty) => cons((Some(head1()), None), tail1().zipAll(empty))
     case (Cons(head1, tail1), Cons(head2, tail2)) => cons((Some(head1()), Some(head2())), tail1().zipAll(tail2()))
+    case(_, _) => Empty
   }
 
   def zipWith[B,C](s2: Stream[B])(f: (A, B) => C): Stream[C] =
@@ -121,11 +122,12 @@ trait Stream[+A] {
     zipWith(s2)((_,_))
 
   def zipWithAll[B, C](s2: Stream[B])(f: (Option[A], Option[B]) => C): Stream[C] =
-    unfold((this, s2)) {
+    Stream.unfold((this, s2)) {
       case (Empty, Empty) => None
-      case (Cons(h, t), Empty) => Some(f(Some(h()) -> None) -> (t() -> empty[B]))
-      case (Empty, Cons(h, t)) => Some(f(None -> Some(h())) -> (empty[A] -> t()))
-      case (Cons(h1, t1), Cons(h2, t2)) => Some(f(Some(h1()) -> Some(h2())) -> (t1() -> t2()))
+      case (Cons(h, t), Empty) => Some(f(Some(h()), Option.empty[B]) -> (t(), empty[B]))
+      case (Empty, Cons(h, t)) => Some(f(Option.empty[A], Some(h())) -> (empty[A] -> t()))
+      case (Cons(h1, t1), Cons(h2, t2)) => Some(f(Some(h1()), Some(h2())) -> (t1() -> t2()))
+      case(_, _) => None
     }
 
   def startsWith[B](s: Stream[B]): Boolean = (this, s) match {
