@@ -103,15 +103,59 @@ trait Stream[+A] {
   def flatMap[B](f: A => Stream[B]): Stream[B] =
     foldRight(empty[B])((head, tail) => tail.append(f(head)))
 
-  def zipAll[B](s2: Stream[B]): Stream[(Option[A],Option[B])] = ???
+  def zipAll[B](s2: Stream[B]): Stream[(Option[A],Option[B])] = (this, s2) match {
+    case (Empty, Empty) => Empty
+    case (Empty, Cons(head2, tail2)) => cons((None, Some(head2())), zipAll(tail2()))
+    case (Cons(head1, tail1), Empty) => cons((Some(head1()), None), tail1().zipAll(empty))
+    case (Cons(head1, tail1), Cons(head2, tail2)) => cons((Some(head1()), Some(head2())), tail1().zipAll(tail2()))
+  }
 
-  def startsWith[B](s: Stream[B]): Boolean = ???
+  def zipWith[B,C](s2: Stream[B])(f: (A, B) => C): Stream[C] =
+    unfold((this, s2)) {
+      case (Cons(h1,t1), Cons(h2,t2)) =>
+        Some((f(h1(), h2()), (t1(), t2())))
+      case _ => None
+    }
+
+  def zip[B](s2: Stream[B]): Stream[(A,B)] =
+    zipWith(s2)((_,_))
+
+  def zipWithAll[B, C](s2: Stream[B])(f: (Option[A], Option[B]) => C): Stream[C] =
+    unfold((this, s2)) {
+      case (Empty, Empty) => None
+      case (Cons(h, t), Empty) => Some(f(Some(h()) -> None) -> (t() -> empty[B]))
+      case (Empty, Cons(h, t)) => Some(f(None -> Some(h())) -> (empty[A] -> t()))
+      case (Cons(h1, t1), Cons(h2, t2)) => Some(f(Some(h1()) -> Some(h2())) -> (t1() -> t2()))
+    }
+
+  def startsWith[B](s: Stream[B]): Boolean = (this, s) match {
+    case (Empty, Empty) => true
+    case (Empty, Cons(_, _)) => false
+    case (Cons(_, _), Empty) => true
+    case (Cons(head1, tail1), Cons(head2, tail2)) if head1() == head2() => tail1().startsWith(tail2())
+  }
+
+  def startsWithOfficial[A](s: Stream[A]): Boolean =
+    zipAll(s).takeWhile(_._2.isDefined) forAll {
+      case (h,h2) => h == h2
+    }
 
   def constant[A](a: A): Stream[A] = cons(a, constant(a))
 
-  def tails: Stream[Stream[A]] = ???
+  def tails: Stream[Stream[A]] =
+    unfold(this) {
+      case Empty => None
+      case s => Some((s, s drop 1))
+    } append Stream(empty)
 
-  def scanRight[B](z: B)(f: (A, => B) => B): Stream[B] = ???
+  // ???? !!!!!!
+  def scanRight[B](z: B)(f: (A, => B) => B): Stream[B] =
+    foldRight((z, Stream(z)))((a, p0) => {
+      // p0 is passed by-name and used in by-name args in f and cons. So use lazy val to ensure only one evaluation...
+      lazy val p1 = p0
+      val b2 = f(a, p1._1)
+      (b2, cons(b2, p1._2))
+    })._2
 }
 
 case object Empty extends Stream[Nothing]
@@ -137,6 +181,7 @@ object Stream {
   def fromViaUnfold(n: Int): Stream[Int] =
     unfold(n)(n => Some(n, n+1))
 
+  // It takes an initial state, and a function for producing both the next state(S) and the next value(A) in the generated stream.
   def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = f(z) match {
     case None => Empty
     case Some((a, s)) => cons(a, unfold(s)(f))
